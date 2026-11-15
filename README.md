@@ -285,13 +285,12 @@ The simulator includes five focused unit benchmarks and one comprehensive regres
 | **2** | **Data Dependencies & Forwarding** | Chained arithmetic operations (`ADDI`, `ADD`, `SUB`) with back-to-back register dependencies. | Exercises `EX/MEM` and `MEM/WB` forwarding paths without pipeline bubbles. |
 | **3** | **Load-Use Dependency** | `SW` followed by `LW`, immediately followed by dependent `ADDI` and `ADD`. | Verifies load-use interlock: detects dependency, stalls `IF/ID`, inserts 1 bubble into `ID/EX`, then forwards loaded word from `MEM/WB`. |
 | **4** | **Branch Behaviour** | Sequence of taken and not-taken `BEQ` instructions with data dependencies. | Confirms direct operand equality evaluation in EX, verifies correct penalty (2 cycles per taken branch), and checks that wrong-path instructions are discarded. |
-| **5** | **JALR Jump-Register & Linking** | Indirect jump with RAW dependency on base register `rs1`, `PC + 4` link address commit, wrong-path instruction flushing, and target execution consuming the saved link register. | Exercises EX/MEM forwarding into JALR target calculation (`(rs1 + imm) & ~1U`), verifies link address writeback, and confirms correct flush penalty and pipeline resumption. |
-| **6** | **Original Combined Regression** | Mixed workload: ALU, store/load, load-use stall, `JAL`, and taken `BEQ`. | End-to-end regression validation of the core feature set. |
+| **5** | **Original Combined Regression** | Mixed workload: ALU, store/load, load-use stall, `JAL`, and taken `BEQ`. | End-to-end regression validation of the core feature set. |
 
 > **Implemented Instruction Support vs. Benchmark Coverage**:
-> The simulator's decoding and datapath logic implement ten RV32I instructions (`ADD`, `SUB`, `ADDI`, `LW`, `SW`, `BEQ`, `JAL`, `JALR`, `LUI`, and architectural `NOP`). 
-> The automated benchmark suite actively exercises nine of these instructions across arithmetic, load/store, upper immediate, conditional branch, and both PC-relative (`JAL`) and register-indirect (`JALR`) jumps. Architectural `NOP` (`0x00000013`) is supported by the decoding logic and pipeline registers, but is not used in the automated benchmark suite, where unexecuted slots are modeled as hardware bubbles (`valid = 0`) and the program boundary is signaled by an end marker.
+> The simulator's decoding and datapath logic implement ten RV32I instructions (`ADD`, `SUB`, `ADDI`, `LW`, `SW`, `BEQ`, `JAL`, `JALR`, `LUI`, and architectural `NOP`).
 
+> The current automated benchmark suite exercises the implemented arithmetic, load/store, upper-immediate, conditional-branch, and JAL instruction paths. JALR is supported by the decoder and execution logic, but a dedicated JALR benchmark has not yet been added. Architectural NOP (`0x00000013`) is also supported but is not explicitly exercised by the current benchmark suite.
 > **Machine-Code Encoders**: The helper functions `encode_addi()`, `encode_r()`, `encode_lw()`, `encode_sw()`, `encode_beq()`, `encode_jal()`, and `encode_jalr()` in `main.c` are test-harness utilities that construct binary instruction words in memory. The processor datapath decodes and executes them through `decode_instruction()` like standard machine code.
 
 ---
@@ -369,20 +368,19 @@ gcc -std=c11 -Wall -Wextra -O0 -Iinclude src/*.c -o pipeline.exe
 ```
 
 ### Running Benchmarks
-Execute all six benchmarks and display the comparison summary table:
+Execute all five benchmarks and display the comparison summary table:
 ```bash
 ./pipeline.exe all
 ```
 *(On Windows PowerShell, use `.\pipeline.exe all`)*
 
-Execute individual benchmarks by index (1 to 6):
+Execute individual benchmarks by index (1 to 5):
 ```bash
 ./pipeline.exe 1   # Benchmark 1: Independent instructions
 ./pipeline.exe 2   # Benchmark 2: Data dependencies and forwarding
 ./pipeline.exe 3   # Benchmark 3: Load-use dependency
 ./pipeline.exe 4   # Benchmark 4: Branch behaviour
-./pipeline.exe 5   # Benchmark 5: JALR register jump and link
-./pipeline.exe 6   # Benchmark 6: Combined demonstration
+./pipeline.exe 5   # Benchmark 5: Combined demonstration
 ```
 
 ---
