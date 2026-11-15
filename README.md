@@ -9,11 +9,29 @@ A cycle-accurate, educational RISC-V (RV32I subset) five-stage pipeline processo
 
 ---
 
-## 1. Project Overview
+## Contents
+
+- [Overview & Datapath Architecture](#overview--datapath-architecture)
+- [Architectural Overview of the 5-Stage Pipeline](#architectural-overview-of-the-5-stage-pipeline)
+- [Project-Specific Datapath Diagram](#project-specific-datapath-diagram)
+- [Supported Instruction Subset](#supported-instruction-subset)
+- [Control Signal Design & Architectural Decisions](#control-signal-design--architectural-decisions)
+- [Implementation Highlights & Hardware Mechanics](#implementation-highlights--hardware-mechanics)
+- [Performance Instrumentation & Execution Views](#performance-instrumentation--execution-views)
+- [Benchmark Suite](#benchmark-suite)
+- [Sample Execution Outputs & Terminal Views](#sample-execution-outputs--terminal-views)
+- [Modular Project Structure](#modular-project-structure)
+- [Build & Run Instructions](#build--run-instructions)
+- [Current Limitations & Scope](#current-limitations--scope)
+- [Author](#author)
+
+---
+
+## Overview & Datapath Architecture
 
 This simulator provides an observable, software-based model of a classic five-stage RISC-V in-order processor datapath. Developed to bridge the gap between abstract computer architecture theory and concrete software implementation, the project faithfully models cycle-by-cycle clock transitions, pipeline register staging, hazard detection interlocks, priority-based forwarding paths, and retired instruction metrics.
 
-### Key Goals & Characteristics
+### Key Characteristics
 - **Modular Architecture**: Clean separation between CPU state, decoder, ALU execution, hazard/forwarding logic, memory operations, write-back commit, and timeline instrumentation.
 - **Hardware-Accurate Clock Stepping**: Uses an explicit old-state / next-state synchronization barrier to guarantee that instructions advance strictly one stage per clock cycle.
 - **Cycle-by-Cycle Pipeline Timeline**: Built-in ASCII visualizer tracking instructions through each stage alongside stall and flush events.
@@ -21,16 +39,16 @@ This simulator provides an observable, software-based model of a classic five-st
 
 ---
 
-## 2. Architecture Overview & Five-Stage Pipeline
+## Architectural Overview of the 5-Stage Pipeline
 
 The processor executes instructions across five synchronous stages separated by inter-stage pipeline registers:
 
-```
+```text
 [ IF ] ---> (IF/ID) ---> [ ID ] ---> (ID/EX) ---> [ EX ] ---> (EX/MEM) ---> [ MEM ] ---> (MEM/WB) ---> [ WB ]
 ```
 
 ### 1. Instruction Fetch (IF)
-- **Operation**: Fetches a 32-bit little-endian instruction from simulated byte-addressable memory (`cpu->mem`) at the address pointed to by the program counter (`cpu->pc`).
+- **Operation**: Fetches a 32-bit little-endian instruction word from simulated byte-addressable memory (`cpu->mem`) at the address pointed to by the program counter (`cpu->pc`).
 - **Sequential Flow**: Computes default sequential PC (`cpu->pc + 4`).
 - **Termination Marker**: A word containing `0x00000000` is designated as the educational benchmark end marker. Fetching zero halts new instruction fetches (`fetch_stopped = 1`), allowing in-flight instructions to drain through the pipeline.
 - **Stall & Flush Reactions**: IF stage fetch is suppressed or held whenever a load-use stall is active or when a branch redirects the PC.
@@ -52,7 +70,7 @@ The processor executes instructions across five synchronous stages separated by 
 
 ### 4. Memory Access (MEM)
 - **Data Memory Interface**: Interacts with the byte-addressable unified memory array (`cpu->mem`).
-- **Load Word (LW)**: Reads 4 consecutive bytes from `alu_result` in little-endian order and places the resulting 32-bit sign-extended word into `mem_wb.memory_data`.
+- **Load Word (LW)**: Reads 4 consecutive bytes from `alu_result` in little-endian order and places the resulting 32-bit word into `mem_wb.memory_data`.
 - **Store Word (SW)**: Writes 4 bytes from `store_data` (forwarded `rs2` value) to memory at `alu_result`.
 - **Pass-through**: Passes ALU results, link addresses, destination register specifiers, and control signals forward to `MEM/WB`.
 
@@ -64,71 +82,15 @@ The processor executes instructions across five synchronous stages separated by 
 
 ---
 
-## 3. Project-Specific Datapath Diagram
+## Project-Specific Datapath Diagram
 
-The following diagram reflects the exact components, control flags, pipeline registers, and feedback connections implemented in this modular codebase:
+The following vector datapath diagram accurately illustrates the hardware modules, inter-stage pipeline registers, control lines, hazard feedback paths, and forwarding loops implemented in this project:
 
-![RISC-V Five-Stage Pipeline Datapath](docs/images/datapath.png)
-
-```mermaid
-flowchart LR
-    subgraph IF ["IF Stage (Instruction Fetch)"]
-        PCMux{"PC Mux"} --> PC["PC"]
-        PC --> IMEM["Instruction Memory"]
-        PC --> PCAdd["+4 Adder"]
-        PCAdd -.->|PC+4| PCMux
-    end
-
-    IF -->|"IF/ID Register (valid, pc, instruction)"| ID
-
-    subgraph ID ["ID Stage (Instruction Decode)"]
-        DEC["Decoder Unit"]
-        RF["Register File (x0-x31)"]
-        IMM["Immediate Generator"]
-        HDU["Hazard Detection Unit (Load-Use)"]
-        CTRL["Control Unit\n(reg_write, mem_read, mem_write,\nbranch, jump, jalr, alu_src_imm, alu_op)"]
-    end
-
-    ID -->|"ID/EX Register (valid, pc, rd, rs1, rs2, imm, read_data1/2, uses_rs1/2, control)"| EX
-
-    subgraph EX ["EX Stage (Execute & Branch/Jump)"]
-        FWDMuxA{"Forward Mux A"}
-        FWDMuxB{"Forward Mux B"}
-        FWDU["Forwarding Unit"]
-        ALUMux{"ALU Src Mux"}
-        ALU["ALU (ADD / SUB)"]
-        BR["Branch & Jump Logic\n(BEQ, JAL, JALR)"]
-        FWDU -.->|Select| FWDMuxA
-        FWDU -.->|Select| FWDMuxB
-        FWDMuxB --> ALUMux
-    end
-
-    EX -->|"EX/MEM Register (valid, pc, rd, alu_result, store_data, link_address, control)"| MEM
-
-    subgraph MEM ["MEM Stage (Memory Access)"]
-        DMEM["Data Memory (LW / SW)"]
-    end
-
-    MEM -->|"MEM/WB Register (valid, pc, rd, alu_result, memory_data, link_address, control)"| WB
-
-    subgraph WB ["WB Stage (Write Back)"]
-        WBMux{"WB Value Select\n(link_address / mem_data / alu_result)"}
-    end
-
-    %% Feedback & Forwarding Connections
-    EX/MEM -.->|"Forward Path (Priority 1)"| FWDU
-    MEM/WB -.->|"Forward Path (Priority 2)"| FWDU
-    WBMux -->|"Write Data (RegWrite)"| RF
-    BR ==>|"Branch / Jump Target & Flush"| PCMux
-    BR ==>|"Flush Signal"| IF
-    BR ==>|"Flush Signal"| ID
-    HDU ==>|"Stall Signal (Hold PC & IF/ID, Bubble ID/EX)"| PC
-    HDU ==>|"Stall Signal"| IF
-```
+![RISC-V Five-Stage Pipeline Datapath](docs/images/datapath.svg)
 
 ---
 
-## 4. Supported Instruction Subset
+## Supported Instruction Subset
 
 The simulator supports a focused subset of the RV32I base integer instruction set:
 
@@ -145,11 +107,11 @@ The simulator supports a focused subset of the RV32I base integer instruction se
 | `LUI rd, imm`      | U-type | `0110111` | — | — | `rd = imm[31:12] << 12` |
 | `NOP`              | I-type | `0010011` | `000` | — | `ADDI x0, x0, 0` (`0x00000013`) |
 
-> **Scope Note**: This subset focuses on demonstrating five-stage pipeline fundamentals (ALU data dependencies, load-use interlocks, memory stores/loads, upper immediate generation, and conditional/unconditional control-flow redirection). It is not a complete implementation of the RV32I specification (omits shifts, logical bitwise operations, unsigned comparisons, system calls, fences, and CSRs).
+> **Scope Note**: This subset focuses on demonstrating five-stage pipeline fundamentals (ALU data dependencies, load-use interlocks, memory stores/loads, upper immediate generation, and control-flow redirection). It omits shifts, logical bitwise operations, unsigned comparisons, system calls, and CSRs.
 
 ---
 
-## 5. Control Signal Design
+## Control Signal Design & Architectural Decisions
 
 In `include/instruction.h`, the control unit produces an explicit 8-field bundle:
 
@@ -167,7 +129,7 @@ typedef struct
 } control_signals_t;
 ```
 
-### Control Signal Table
+### Control Signal Truth Table
 
 | Instruction | `reg_write` | `mem_read` | `mem_write` | `branch` | `jump` | `jalr` | `alu_src_imm` | `alu_op` |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -182,69 +144,73 @@ typedef struct
 | `LUI`  | 1 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 | `NOP`  | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 
-### Architectural Clarifications & Design Choices
-1. **Absence of `MemtoReg`**:
-   Textbook single-cycle implementations frequently incorporate a multiplexer control signal named `MemtoReg`. In this simulator, write-back data selection is cleanly isolated within the `writeback_value()` function in `src/writeback.c`:
-   ```c
-   int32_t writeback_value(mem_wb_t *stage)
-   {
-       if (stage->control.jump)     return stage->link_address;
-       if (stage->control.mem_read) return stage->memory_data;
-       return stage->alu_result;
-   }
-   ```
-2. **Explicit `jump` vs. `jalr` Flags**:
-   - `jump = 1` indicates that a return address (`PC + 4`) must be linked to register `rd` and an unconditional jump must be resolved in EX.
-   - `jalr = 1` explicitly flags that target calculation requires the forwarded `rs1` register content plus immediate with the least significant bit cleared (`& ~1U`), whereas standard `JAL` calculates target address via `PC + immediate`.
-   - Propagating these explicit flags through pipeline registers simplifies stage decoding, eliminates redundant decoding in later stages, and supports clean forwarding of jump link results.
+### Architectural Decision: Absence of `MemtoReg`
+
+Standard textbook single-cycle datapaths (e.g., Patterson & Hennessy) introduce a dedicated multiplexer control signal named `MemtoReg` to route either the memory read word or the ALU output into the writeback register port.
+
+In this implementation, **`MemtoReg` is intentionally omitted from `control_signals_t`**. 
+
+Instead, writeback value arbitration is handled hierarchically inside `writeback_value()` (`src/writeback.c`):
+
+```c
+int32_t writeback_value(mem_wb_t *stage)
+{
+    if (stage->control.jump)
+        return stage->link_address;
+
+    if (stage->control.mem_read)
+        return stage->memory_data;
+
+    return stage->alu_result;
+}
+```
+
+#### Why This Is an Intentional Architectural Choice:
+1. **Elimination of Redundant Pipeline State**: A pipelined processor already carries `mem_read` and `jump` across `ID/EX`, `EX/MEM`, and `MEM/WB`. Adding a dedicated `MemtoReg` flag carries redundant state across multiple 32-bit pipeline registers.
+2. **Three-Way Writeback Disambiguation**: In RV32I, the register write port must select among three distinct sources: **ALU result**, **Memory data**, or **Link address ($PC+4$)**. A single 1-bit `MemtoReg` is insufficient for jumps. Deriving the writeback source directly from the active operation (`jump` $\rightarrow$ `link_address`, `mem_read` $\rightarrow$ `memory_data`, default $\rightarrow$ `alu_result`) simplifies stage decoding and reduces register overhead.
 
 ---
 
-## 6. Implementation Highlights & Engineering Decisions
+## Implementation Highlights & Hardware Mechanics
 
-### A. Instruction-Aware Dependency Metadata (`uses_rs1`, `uses_rs2`)
-In hardware, reading register `x0` produces zero without hazard penalty. In a software simulator, checking register dependencies purely by comparing register indices can trigger false stalls (e.g., matching `rs1 == 0` or evaluating instructions that do not read `rs2`, such as `ADDI` or `LW`).
-- `decode_instruction()` explicitly marks `uses_rs1` and `uses_rs2` only when an instruction legitimately depends on those source registers.
-- `detect_hazard()` and forwarding logic verify `uses_rs1` / `uses_rs2` prior to checking register numbers, preventing spurious load-use stalls on unused register fields.
+### 1. Instruction-Aware Dependency Metadata (`uses_rs1`, `uses_rs2`)
+In hardware, reading register `x0` always yields zero. In a software simulator, checking dependencies strictly by comparing register index numbers (`rs == rd`) can trigger false hazard stalls—for example, if `rd == 0` or if an instruction does not read `rs2` (such as `ADDI` or `LW`).
+- `decode_instruction()` explicitly marks `uses_rs1` and `uses_rs2` only when an instruction legitimately accesses those registers.
+- `detect_hazard()` and forwarding logic check `uses_rs1` and `uses_rs2` before matching register numbers, preventing spurious load-use stalls on unread register fields.
 
-### B. Priority-Based Data Forwarding
+### 2. Priority-Based Data Forwarding
 Implemented in `src/hazards.c`:
-- **EX/MEM Priority**: When a RAW hazard exists between the current instruction in EX and the immediately preceding instruction in EX/MEM, the EX/MEM result is selected because it represents the newest value.
-- **MEM/WB Fallback**: If the instruction in EX/MEM does not target the source register, but the older instruction in MEM/WB does, MEM/WB forwarding is selected via `writeback_value(mem_wb)`.
-- **Load Availability Constraint**: If `ex_mem->control.mem_read == 1`, data is not forwarded from EX/MEM because the memory read has not completed yet. This is handled by load-use interlock.
+- **EX/MEM Priority**: When a RAW hazard occurs between the instruction in EX and the preceding instruction in EX/MEM, the EX/MEM result is selected because it represents the newest value.
+- **MEM/WB Fallback**: If the instruction in EX/MEM does not write to the register, but the older instruction in MEM/WB does, MEM/WB forwarding is selected via `writeback_value(mem_wb)`.
+- **Load Availability Constraint**: If `ex_mem->control.mem_read == 1`, data is not forwarded from EX/MEM because the memory read has not completed yet. This is guarded by the load-use interlock.
 - **Link Address Forwarding**: If `ex_mem->control.jump == 1`, `ex_mem->link_address` is forwarded, enabling dependent instructions to use link addresses without stalling.
 
-### C. One-Cycle Load-Use Interlock
+### 3. One-Cycle Load-Use Interlock
 Implemented in `detect_hazard()` and `pipeline_step()`:
-- If an instruction in `ID/EX` is a load (`mem_read == 1` and `rd != 0`), and the decoded instruction in `IF/ID` uses `rd` as either `rs1` or `rs2`, a true load-use data dependency is present.
+- If an instruction in `ID/EX` is a load (`mem_read == 1` and `rd != 0`), and the decoded instruction in `IF/ID` uses `rd` as either `rs1` or `rs2`, a true load-use dependency exists.
 - Hardware action:
-  1. `next_if_id = pipeline->if_id` (freezes the IF/ID register).
+  1. `next_if_id = pipeline->if_id` (holds the IF/ID register).
   2. `cpu->pc` is held stationary (IF stage fetch is held).
   3. `next_id_ex.valid = 0` (injects an architectural bubble / NOP into ID/EX).
-- In the subsequent cycle, the load advances to MEM, where its data becomes available for MEM/WB forwarding to the stalled instruction now entering EX.
+- In the next cycle, the load advances to MEM, where its data becomes available for MEM/WB forwarding to the stalled instruction now entering EX.
 
-### D. EX-Stage Branch & Jump Resolution with 2-Stage Flushing
+### 4. EX-Stage Branch & Jump Resolution with 2-Stage Flushing
 - Branch condition evaluation (`operand1 == operand2` for `BEQ`) and jump targets (`JAL`, `JALR`) are resolved in the **EX stage**.
 - When `branch_taken == 1`:
   - `cpu->pc` is immediately updated to the target address.
   - `next_if_id.valid = 0` and `next_id_ex.valid = 0` (invalidates the two younger speculatively fetched instructions).
   - Increments flush statistics (`flushes += 2`, `branch_flush_events++`, `flushed_instructions += 2`).
 
-### E. Pipeline Register Validity Tracking (`valid` flag)
-Every inter-stage register (`if_id_t`, `id_ex_t`, `ex_mem_t`, `mem_wb_t`) contains an explicit `valid` integer flag:
-- When a bubble is inserted or a stage is flushed, `valid` is set to `0`.
-- Downstream stages check `!stage->valid` and immediately propagate an empty state without triggering false memory reads, spurious register writes, or invalid hazard assertions.
-
-### F. Synchronous Clock Stepping (Old-State / Next-State Barrier)
+### 5. Synchronous Clock Stepping (Old-State / Next-State Barrier)
 In `src/pipeline.c`, `pipeline_step()` declares local next-state variables (`next_if_id`, `next_id_ex`, `next_ex_mem`, `next_mem_wb`).
 - Each stage reads from `pipeline-><stage>` (the stable state at clock edge $t$) and writes into `next_<stage>`.
-- Stages are evaluated in reverse sequence (`WB` $\rightarrow$ `MEM` $\rightarrow$ `EX` $\rightarrow$ `ID` $\rightarrow$ `IF`) or concurrently through next-state buffers.
-- All next-state values are simultaneously committed to the global `pipeline` structure at the end of the step.
+- Stages are evaluated in reverse sequence (`WB` $\rightarrow$ `MEM` $\rightarrow$ `EX` $\rightarrow$ `ID` $\rightarrow$ `IF`).
+- All next-state values are simultaneously committed to the global `pipeline` structure at the end of the cycle.
 - This prevents race conditions where an instruction could erroneously cascade across multiple stages within a single simulated clock tick.
 
 ---
 
-## 7. Performance Instrumentation & Timeline Tracking
+## Performance Instrumentation & Execution Views
 
 ### Metrics Tracked in `pipeline_t`
 - **Total Clock Cycles (`cycles`)**: Total simulated clock ticks elapsed.
@@ -269,7 +235,7 @@ Implemented in `src/timeline.c`:
 
 ---
 
-## 8. Benchmark Suite
+## Benchmark Suite
 
 The simulator includes four focused unit benchmarks and one comprehensive regression test (constructed in `src/main.c` using helper encoders `encode_addi`, `encode_r`, `encode_lw`, `encode_sw`, `encode_beq`, and `encode_jal`):
 
@@ -285,7 +251,28 @@ The simulator includes four focused unit benchmarks and one comprehensive regres
 
 ---
 
-## 9. Modular File Structure
+## Sample Execution Outputs & Terminal Views
+
+The simulator generates three distinct terminal views that demonstrate execution correctness, hazard resolution, and performance characteristics.
+
+### View 1: Cycle-by-Cycle Execution Trace
+*Displays stage-by-stage transitions, register reads/writes, ALU results, and real-time hazard events (stalls, bubbles, flushes).*
+
+![Cycle Execution Trace](docs/images/cycle_execution_log.png)
+
+### View 2: Pipeline Stage Timing Diagram across Clock Cycles
+*Visualizes instructions moving across IF, ID, EX, MEM, and WB stages across 5-cycle windows, explicitly displaying `HOLD` during stalls and `FLUSH` during branch penalties.*
+
+![Pipeline Timing Diagram](docs/images/pipeline_timeline.png)
+
+### View 3: Benchmark Comparison & Hazard Dependency Summary Table
+*Comprehensive summary table comparing total cycles, instruction retirement, CPI, IPC, load-use stalls, and branch flushes across all benchmarks.*
+
+![Benchmark Comparison Table](docs/images/benchmark_summary.png)
+
+---
+
+## Modular Project Structure
 
 ```text
 .
@@ -309,14 +296,17 @@ The simulator includes four focused unit benchmarks and one comprehensive regres
 │   └── pipeline.c        # Monolithic single-file implementation (kept for history)
 ├── docs/                 # Documentation and visual artifacts
 │   └── images/
-│       └── datapath.png  # Project-specific five-stage datapath diagram
+│       ├── datapath.svg  # Project-specific vector datapath diagram
+│       ├── cycle_execution_log.png
+│       ├── pipeline_timeline.png
+│       └── benchmark_summary.png
 ├── .gitignore            # Excludes build binaries (*.exe, *.o) and editor temp files
 └── README.md             # Project documentation
 ```
 
 ---
 
-## 10. Build and Execution Instructions
+## Build & Run Instructions
 
 ### Prerequisites
 - Standard C11 compiler (GCC, Clang, or MinGW-w64 on Windows).
@@ -345,38 +335,7 @@ Execute individual benchmarks by index (1 to 5):
 
 ---
 
-## 11. Sample Execution Output
-
-Below is an annotated excerpt from Benchmark 3 (`Load-use dependency`):
-
-```text
-====================================================
-CLOCK CYCLE 4
-====================================================
-    WB:  ADDI  -> x1  = 42
-    MEM: SW value 42 -> address 208
-    EX:  LW    ALU result = 208
-    ID:  ADDI  (rd=x3 rs1=x2 rs2=x0 imm=1)
-    IF:  PC=0x010 instruction=0x00310233
-
-====================================================
-CLOCK CYCLE 5
-====================================================
-    STALL: load-use hazard detected
-    BUBBLE: inserted into ID/EX
-    MEM: LW from address 208 -> 42
-    EX:  SW   
-
-====================================================
-CLOCK CYCLE 6
-====================================================
-    WB:  LW    -> x2  = 42
-    EX:  ADDI  ALU result = 43   <-- Operand forwarded from MEM/WB
-```
-
----
-
-## 12. Current Limitations & Scope
+## Current Limitations & Scope
 
 This project is intentionally scoped as an educational pipeline simulator:
 1. **Instruction Set**: Implements an educational subset of RV32I. Shifts (`SLL`, `SRL`, `SRA`), logical operations (`AND`, `OR`, `XOR`, `SLT`), and standard unsigned memory variants (`LBU`, `LHU`) are not included.
@@ -386,7 +345,7 @@ This project is intentionally scoped as an educational pipeline simulator:
 
 ---
 
-## 13. Author
+## Author
 
 - **Dharanidharan Ravikumar**
 - Graduate Student in Smart Convergence Systems Engineering, Dong-A University

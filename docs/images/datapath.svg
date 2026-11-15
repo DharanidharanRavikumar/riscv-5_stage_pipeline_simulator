@@ -1,0 +1,377 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 720" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .outer-border { fill: none; stroke: #24292f; stroke-width: 2; }
+      .header-title-box { fill: #092c5c; rx: 8px; }
+      .header-title-text { fill: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 700; text-anchor: middle; }
+      
+      .stage-pill { fill: #e8f1fd; stroke: #9ec5fe; stroke-width: 1.5; rx: 6px; }
+      .stage-pill-title { fill: #0a4da2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+      .stage-pill-sub { fill: #4a6fa5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 500; text-anchor: middle; }
+      
+      .pipe-reg { fill: #f8fafc; stroke: #0f172a; stroke-width: 2; rx: 6px; }
+      .pipe-reg-text { fill: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+      .pipe-reg-sub { fill: #475569; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; text-anchor: middle; }
+      
+      .hw-box { fill: #ffffff; stroke: #0f172a; stroke-width: 1.5; rx: 4px; }
+      .hw-title { fill: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 700; text-anchor: middle; }
+      .hw-sub { fill: #475569; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 10px; text-anchor: middle; }
+      
+      .ctrl-box { fill: #f0f7ff; stroke: #0969da; stroke-width: 1.5; rx: 5px; }
+      .ctrl-title { fill: #0969da; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 700; text-anchor: middle; }
+      .ctrl-sig-text { fill: #0a3069; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10.5px; }
+      
+      .fwd-box { fill: #f0f7ff; stroke: #0969da; stroke-width: 1.5; rx: 4px; }
+      .fwd-title { fill: #0969da; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      
+      .stall-box { fill: #fff5f5; stroke: #cf222e; stroke-width: 1.5; rx: 5px; }
+      .stall-title { fill: #cf222e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .stall-sub { fill: #a40e26; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 9.5px; text-anchor: middle; }
+      
+      .flush-box { fill: #f6fef9; stroke: #1a7f37; stroke-width: 1.5; rx: 5px; }
+      .flush-title { fill: #1a7f37; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .flush-sub { fill: #116329; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 9.5px; text-anchor: middle; }
+      
+      .pc-sel-box { fill: #fbf5ff; stroke: #8250df; stroke-width: 1.5; rx: 5px; }
+      .pc-sel-title { fill: #8250df; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .pc-sel-sub { fill: #6639ba; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 9.5px; text-anchor: middle; }
+      
+      .wb-sel-box { fill: #f0f7ff; stroke: #0969da; stroke-width: 1.5; rx: 6px; }
+      .wb-sel-title { fill: #0969da; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .wb-sel-sub { fill: #0a3069; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 9.5px; text-anchor: middle; }
+      
+      .mux { fill: #ffffff; stroke: #0f172a; stroke-width: 1.5; }
+      .mux-label { fill: #0f172a; font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; font-weight: 600; text-anchor: middle; }
+      
+      .alu { fill: #ffffff; stroke: #0f172a; stroke-width: 1.5; }
+      .alu-text { fill: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; }
+      
+      /* Signal lines */
+      .sig-data { stroke: #0f172a; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .sig-ctrl { stroke: #0969da; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .sig-flush { stroke: #1a7f37; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .sig-stall { stroke: #cf222e; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      
+      .legend-box { fill: #ffffff; stroke: #d0d7de; stroke-width: 1; rx: 6px; }
+      .legend-text { fill: #24292f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 500; }
+    </style>
+
+    <!-- Markers -->
+    <marker id="arr-data" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 6 4 L 0 7 z" fill="#0f172a"/>
+    </marker>
+    <marker id="arr-ctrl" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 6 4 L 0 7 z" fill="#0969da"/>
+    </marker>
+    <marker id="arr-flush" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 6 4 L 0 7 z" fill="#1a7f37"/>
+    </marker>
+    <marker id="arr-stall" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 6 4 L 0 7 z" fill="#cf222e"/>
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1080" height="720" class="bg"/>
+  <rect x="15" y="55" width="1050" height="615" class="outer-border" rx="4"/>
+
+  <!-- Top Banner Title -->
+  <rect x="270" y="16" width="540" height="34" class="header-title-box"/>
+  <text x="540" y="39" class="header-title-text">RISC-V Five-Stage Pipeline Datapath (Project-Specific)</text>
+
+  <!-- ==================== 5 STAGE HEADER PILLS ==================== -->
+  <!-- IF -->
+  <rect x="45" y="68" width="145" height="34" class="stage-pill"/>
+  <text x="117" y="83" class="stage-pill-title">IF</text>
+  <text x="117" y="96" class="stage-pill-sub">(Instruction Fetch)</text>
+
+  <!-- ID -->
+  <rect x="220" y="68" width="230" height="34" class="stage-pill"/>
+  <text x="335" y="83" class="stage-pill-title">ID</text>
+  <text x="335" y="96" class="stage-pill-sub">(Instruction Decode)</text>
+
+  <!-- EX -->
+  <rect x="495" y="68" width="220" height="34" class="stage-pill"/>
+  <text x="605" y="83" class="stage-pill-title">EX</text>
+  <text x="605" y="96" class="stage-pill-sub">(Execute)</text>
+
+  <!-- MEM -->
+  <rect x="745" y="68" width="140" height="34" class="stage-pill"/>
+  <text x="815" y="83" class="stage-pill-title">MEM</text>
+  <text x="815" y="96" class="stage-pill-sub">(Memory Access)</text>
+
+  <!-- WB -->
+  <rect x="915" y="68" width="135" height="34" class="stage-pill"/>
+  <text x="982" y="83" class="stage-pill-title">WB</text>
+  <text x="982" y="96" class="stage-pill-sub">(Write Back)</text>
+
+
+  <!-- ==================== STAGE 1: IF ==================== -->
+  <!-- PC Mux -->
+  <text x="43" y="235" class="hw-sub" font-weight="bold">PC+4</text>
+  <path d="M 40 238 L 40 185 L 47 185" class="sig-data" marker-end="url(#arr-data)"/>
+  <polygon points="48,245 62,255 62,315 48,325" class="mux"/>
+  <text x="55" y="270" class="mux-label">0</text>
+  <text x="55" y="305" class="mux-label">1</text>
+
+  <!-- PC Register -->
+  <rect x="80" y="265" width="36" height="50" class="hw-box"/>
+  <text x="98" y="294" class="hw-title">PC</text>
+
+  <!-- Instruction Memory -->
+  <rect x="135" y="250" width="75" height="80" class="hw-box"/>
+  <text x="172" y="285" class="hw-title">Instruction</text>
+  <text x="172" y="300" class="hw-title">Memory</text>
+
+  <!-- IF datapath connections -->
+  <path d="M 62 285 L 78 285" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 116 290 L 133 290" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 210 290 L 228 290" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- PC+4 Adder loopback -->
+  <path d="M 125 290 L 125 210 L 40 210" class="sig-data"/>
+
+
+  <!-- ==================== PIPELINE REGISTER 1: IF/ID ==================== -->
+  <rect x="230" y="240" width="30" height="235" class="pipe-reg"/>
+  <text x="245" y="350" class="pipe-reg-text" transform="rotate(-90 245 350)">IF/ID</text>
+  <text x="245" y="375" class="pipe-reg-sub" transform="rotate(-90 245 375)">(valid)</text>
+
+
+  <!-- ==================== STAGE 2: ID ==================== -->
+  <!-- Control Unit -->
+  <rect x="330" y="115" width="95" height="135" class="ctrl-box"/>
+  <text x="377" y="132" class="ctrl-title">Control Unit</text>
+  <text x="338" y="148" class="ctrl-sig-text">reg_write</text>
+  <text x="338" y="162" class="ctrl-sig-text">mem_read</text>
+  <text x="338" y="176" class="ctrl-sig-text">mem_write</text>
+  <text x="338" y="190" class="ctrl-sig-text">branch</text>
+  <text x="338" y="204" class="ctrl-sig-text">jump</text>
+  <text x="338" y="218" class="ctrl-sig-text">jalr</text>
+  <text x="338" y="232" class="ctrl-sig-text">alu_src_imm</text>
+  <text x="338" y="244" class="ctrl-sig-text">alu_op</text>
+
+  <!-- Immediate Generator -->
+  <rect x="280" y="270" width="75" height="45" class="hw-box"/>
+  <text x="317" y="290" class="hw-title">Immediate</text>
+  <text x="317" y="303" class="hw-sub">Generator</text>
+
+  <!-- Register File -->
+  <rect x="375" y="270" width="75" height="95" class="hw-box"/>
+  <text x="412" y="310" class="hw-title">Register</text>
+  <text x="412" y="324" class="hw-title">File</text>
+  <text x="412" y="338" class="hw-sub">(x0–x31)</text>
+
+  <!-- ID connections from IF/ID -->
+  <path d="M 260 280 L 278 280" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 270 280 L 270 180 L 328 180" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+  <path d="M 260 330 L 373 330" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Immediate Gen to ID/EX -->
+  <path d="M 355 292 L 473 292" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Register File read data outputs to ID/EX -->
+  <path d="M 450 300 L 473 300" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 450 340 L 473 340" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Hazard Detection Unit (Load-Use) -->
+  <rect x="300" y="505" width="130" height="40" class="stall-box"/>
+  <text x="365" y="522" class="stall-title">Hazard Detection</text>
+  <text x="365" y="536" class="stall-sub">(Load-Use)</text>
+
+  <!-- Stall Control Box -->
+  <rect x="295" y="565" width="140" height="50" class="stall-box"/>
+  <text x="365" y="583" class="stall-title">Stall Control</text>
+  <text x="365" y="597" class="stall-sub">(Hold PC &amp; IF/ID,</text>
+  <text x="365" y="609" class="stall-sub">Insert Bubble)</text>
+
+  <!-- Hazard Detection connections -->
+  <path d="M 365 545 L 365 563" class="sig-stall" marker-end="url(#arr-stall)"/>
+  <path d="M 255 475 L 255 520 L 298 520" class="sig-stall" marker-end="url(#arr-stall)"/>
+  <path d="M 485 475 L 485 525 L 432 525" class="sig-stall" marker-end="url(#arr-stall)"/>
+
+  <!-- Stall Control Action lines (Red) -->
+  <path d="M 295 590 L 98 590 L 98 317" class="sig-stall" marker-end="url(#arr-stall)"/>
+  <path d="M 320 565 L 320 485 L 245 485 L 245 477" class="sig-stall" marker-end="url(#arr-stall)"/>
+  <path d="M 435 590 L 490 590 L 490 477" class="sig-stall" marker-end="url(#arr-stall)"/>
+
+
+  <!-- ==================== PIPELINE REGISTER 2: ID/EX ==================== -->
+  <rect x="475" y="240" width="30" height="235" class="pipe-reg"/>
+  <text x="490" y="350" class="pipe-reg-text" transform="rotate(-90 490 350)">ID/EX</text>
+  <text x="490" y="375" class="pipe-reg-sub" transform="rotate(-90 490 375)">(valid)</text>
+
+
+  <!-- ==================== STAGE 3: EX ==================== -->
+  <!-- Forwarding Unit -->
+  <rect x="540" y="190" width="90" height="42" class="fwd-box"/>
+  <text x="585" y="208" class="fwd-title">Forwarding</text>
+  <text x="585" y="222" class="fwd-title">Unit</text>
+
+  <!-- Forward Mux 1 (Operand 1) -->
+  <polygon points="560,265 575,272 575,312 560,319" class="mux"/>
+  <text x="567" y="283" class="mux-label">0</text>
+  <text x="567" y="306" class="mux-label">1</text>
+
+  <!-- Forward Mux 2 (Operand 2) -->
+  <polygon points="560,335 575,342 575,382 560,389" class="mux"/>
+  <text x="567" y="353" class="mux-label">0</text>
+  <text x="567" y="376" class="mux-label">1</text>
+
+  <!-- ALU Source Mux (ALU Src Imm) -->
+  <polygon points="595,350 610,357 610,397 595,404" class="mux"/>
+  <text x="602" y="368" class="mux-label">0</text>
+  <text x="602" y="391" class="mux-label">1</text>
+
+  <!-- ALU Core -->
+  <polygon points="625,270 655,295 655,320 635,335 655,350 655,375 625,400" class="alu"/>
+  <text x="640" y="340" class="alu-text">ALU</text>
+
+  <!-- Branch / Jump Resolution Box -->
+  <rect x="575" y="445" width="125" height="48" class="hw-box"/>
+  <text x="637" y="464" class="hw-title">Branch / Jump</text>
+  <text x="637" y="476" class="hw-title">Resolution</text>
+  <text x="637" y="488" class="hw-sub">(BEQ, JAL, JALR)</text>
+
+  <!-- PC Selection Box -->
+  <rect x="575" y="525" width="130" height="35" class="pc-sel-box"/>
+  <text x="640" y="540" class="pc-sel-title">PC Selection</text>
+  <text x="640" y="552" class="pc-sel-sub">(Branch / JAL / JALR)</text>
+
+  <!-- Flush Control Box -->
+  <rect x="585" y="580" width="150" height="35" class="flush-box"/>
+  <text x="660" y="595" class="flush-title">Flush Control</text>
+  <text x="660" y="607" class="flush-sub">(Invalidate IF/ID &amp; ID/EX)</text>
+
+  <!-- EX Connections -->
+  <path d="M 505 285 L 558 285" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 505 355 L 558 355" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Forwarding Unit Control Lines to Muxes -->
+  <path d="M 567 232 L 567 263" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+  <path d="M 580 232 L 580 333" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- Muxes to ALU -->
+  <path d="M 575 292 L 623 292" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 575 362 L 593 362" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 505 440 L 590 440 L 590 385 L 593 385" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 610 377 L 623 377" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- ALU Output to EX/MEM -->
+  <path d="M 655 335 L 708 335" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Branch/Jump Evaluation lines -->
+  <path d="M 605 292 L 605 443" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 615 362 L 615 443" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 637 493 L 637 523" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Branch / Jump Target Feedback to PC Mux (Long Datapath Line) -->
+  <path d="M 575 542 L 55 542 L 55 327" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- Flush Control lines (Green) -->
+  <path d="M 637 560 L 637 578" class="sig-flush" marker-end="url(#arr-flush)"/>
+  <path d="M 585 598 L 500 598 L 500 477" class="sig-flush" marker-end="url(#arr-flush)"/>
+  <path d="M 585 598 L 245 598 L 245 477" class="sig-flush" marker-end="url(#arr-flush)"/>
+
+
+  <!-- ==================== PIPELINE REGISTER 3: EX/MEM ==================== -->
+  <rect x="710" y="240" width="30" height="235" class="pipe-reg"/>
+  <text x="725" y="350" class="pipe-reg-text" transform="rotate(-90 725 350)">EX/MEM</text>
+  <text x="725" y="375" class="pipe-reg-sub" transform="rotate(-90 725 375)">(valid)</text>
+
+
+  <!-- ==================== STAGE 4: MEM ==================== -->
+  <!-- Data Memory -->
+  <rect x="765" y="295" width="75" height="85" class="hw-box"/>
+  <text x="802" y="333" class="hw-title">Data</text>
+  <text x="802" y="347" class="hw-title">Memory</text>
+  <text x="802" y="361" class="hw-sub">(LW / SW)</text>
+
+  <!-- MEM connections -->
+  <path d="M 740 325 L 763 325" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 840 338 L 868 338" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- EX/MEM Forwarding path back to Forwarding Unit -->
+  <path d="M 725 238 L 725 180 L 610 180 L 610 188" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+
+  <!-- ==================== PIPELINE REGISTER 4: MEM/WB ==================== -->
+  <rect x="870" y="240" width="30" height="235" class="pipe-reg"/>
+  <text x="885" y="350" class="pipe-reg-text" transform="rotate(-90 885 350)">MEM/WB</text>
+  <text x="885" y="375" class="pipe-reg-sub" transform="rotate(-90 885 375)">(valid)</text>
+
+
+  <!-- ==================== STAGE 5: WB ==================== -->
+  <!-- WB Value Select Box -->
+  <rect x="940" y="150" width="105" height="60" class="wb-sel-box"/>
+  <text x="992" y="168" class="wb-sel-title">WB value select:</text>
+  <text x="992" y="182" class="wb-sel-sub">link address /</text>
+  <text x="992" y="195" class="wb-sel-sub">memory data /</text>
+  <text x="992" y="207" class="wb-sel-sub">ALU result</text>
+
+  <!-- WB Value Mux -->
+  <polygon points="950,270 980,285 980,415 950,430" class="mux"/>
+
+  <!-- Register File Write Port Box -->
+  <rect x="995" y="325" width="70" height="50" class="hw-box"/>
+  <text x="1030" y="345" class="hw-title">Register File</text>
+  <text x="1030" y="360" class="hw-sub">Write Port</text>
+
+  <!-- MEM/WB to WB Mux -->
+  <path d="M 900 295 L 948 295" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 900 350 L 948 350" class="sig-data" marker-end="url(#arr-data)"/>
+  <path d="M 900 405 L 948 405" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- WB Mux to Write Port -->
+  <path d="M 980 350 L 993 350" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- WB Mux Control Line from WB Value Select -->
+  <path d="M 965 210 L 965 268" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- Long Writeback line back to Register File in ID -->
+  <path d="M 1030 375 L 1030 645 L 390 645 L 390 367" class="sig-data" marker-end="url(#arr-data)"/>
+
+  <!-- MEM/WB Forwarding path back to Forwarding Unit -->
+  <path d="M 885 238 L 885 168 L 570 168 L 570 188" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+
+  <!-- ==================== CONTROL SIGNALS ROUTING (BLUE) ==================== -->
+  <!-- reg_write across top to WB -->
+  <path d="M 425 145 L 992 145 L 992 148" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+  <path d="M 992 145 L 1030 145 L 1030 323" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- mem_read & mem_write to MEM stage -->
+  <path d="M 425 162 L 785 162 L 785 293" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+  <path d="M 425 176 L 815 176 L 815 293" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- branch, jump, jalr to EX stage -->
+  <path d="M 425 190 L 675 190 L 675 443" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- alu_src_imm to ALU Src Mux -->
+  <path d="M 425 230 L 602 230 L 602 348" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+  <!-- alu_op to ALU -->
+  <path d="M 425 244 L 640 244 L 640 268" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+
+
+  <!-- ==================== BOTTOM LEGEND ==================== -->
+  <rect x="200" y="668" width="680" height="36" class="legend-box"/>
+  
+  <!-- Datapath Signal -->
+  <line x1="225" y1="686" x2="265" y2="686" class="sig-data" marker-end="url(#arr-data)"/>
+  <text x="275" y="690" class="legend-text">Datapath Signal</text>
+
+  <!-- Control Signal -->
+  <line x1="395" y1="686" x2="435" y2="686" class="sig-ctrl" marker-end="url(#arr-ctrl)"/>
+  <text x="445" y="690" class="legend-text">Control Signal</text>
+
+  <!-- Flush Signal -->
+  <line x1="565" y1="686" x2="605" y2="686" class="sig-flush" marker-end="url(#arr-flush)"/>
+  <text x="615" y="690" class="legend-text">Flush Signal</text>
+
+  <!-- Stall Signal -->
+  <line x1="735" y1="686" x2="775" y2="686" class="sig-stall" marker-end="url(#arr-stall)"/>
+  <text x="785" y="690" class="legend-text">Stall Signal</text>
+
+</svg>
