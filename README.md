@@ -53,19 +53,19 @@ The processor executes instructions across five synchronous stages separated by 
 ### 1. Instruction Fetch (IF)
 - **Operation**: Fetches a 32-bit little-endian instruction word from simulated byte-addressable memory (`cpu->mem`) at the address pointed to by the program counter (`cpu->pc`).
 - **Sequential Flow**: Computes default sequential PC (`cpu->pc + 4`).
-- **Termination Marker**: A word containing `0x00000000` is designated as the educational benchmark end marker. Fetching zero halts new instruction fetches (`fetch_stopped = 1`), allowing in-flight instructions to drain through the pipeline.
+- **Termination Marker**: A word containing `0x00000000` is designated as the educational benchmark end marker (distinguished from an architectural NOP). Fetching zero halts new instruction fetches (`fetch_stopped = 1`), allowing in-flight instructions to drain through the pipeline.
 - **Stall & Flush Reactions**: IF stage fetch is suppressed or held whenever a load-use stall is active or when a branch redirects the PC.
 
 ### 2. Instruction Decode & Register Read (ID)
 - **Operation**: Extracts opcode, register specifiers (`rd`, `rs1`, `rs2`), and immediate values from `if_id.instruction`.
 - **Register Read**: Reads architectural registers from the 32-entry register file (`x0`–`x31`) for `rs1` and `rs2`. Register `x0` is hardwired to 0.
 - **Control Signal Generation**: Populates an 8-signal control bundle (`control_signals_t`) and source-dependency metadata (`uses_rs1`, `uses_rs2`).
-- **Hazard Interlock**: Works in tandem with hazard detection logic to freeze `IF/ID` and inject an architectural bubble (`valid = 0`) into `ID/EX` when a load-use conflict is identified.
+- **Hazard Interlock**: Works in tandem with hazard detection logic to freeze `IF/ID` and inject a pipeline bubble (`valid = 0`, without inserting a NOP instruction word) into `ID/EX` when a load-use conflict is identified.
 
 ### 3. Execute, Address Calculation & Branch Resolution (EX)
 - **Forwarding Multiplexers**: Examines source register numbers against active destinations in `EX/MEM` and `MEM/WB`, selecting the most recent operand values.
 - **ALU Operations**: Evaluates arithmetic/logic computations (`ADD`, `SUB`) or address calculations for memory and upper immediate operations.
-- **Branch Resolution**: Resolves conditional branch equality (`BEQ`) using forwarded operands.
+- **Branch Resolution**: Resolves conditional branch equality (`BEQ`) by directly evaluating `operand1 == operand2` on the forwarded operands. While the decoder assigns `alu_op = ALU_SUB`, the branch outcome is determined by this direct equality check rather than the subtraction result or a zero flag.
 - **Jump Calculation & Linking**:
   - `JAL`: Evaluates target address as `PC + immediate`. Preserves `PC + 4` as `link_address`.
   - `JALR`: Evaluates target address as `(forwarded_rs1 + immediate) & ~1U`. Preserves `PC + 4` as `link_address`.
@@ -147,13 +147,15 @@ typedef struct
 | `LUI`  | 1 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 | `NOP`  | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 
+> **Note on BEQ and `alu_op`**: While the control unit sets `alu_op = ALU_SUB` for `BEQ` (reflecting textbook microarchitectures where an ALU subtraction asserts a zero condition flag), the execute stage in this simulator determines whether the branch is taken via a direct equality comparison (`operand1 == operand2`) on forwarded operands, rather than inspecting the subtraction result or a status register flag.
+
 ### Architectural Decision 1: Absence of Dedicated `MemtoReg` Line
 
 Standard textbook single-cycle datapaths (e.g., Patterson & Hennessy) introduce a dedicated multiplexer control signal named `MemtoReg` to route either the memory read word or the ALU output into the writeback register port.
 
-In this implementation, **`MemtoReg` is intentionally omitted from `control_signals_t`**. 
+In this implementation, **`MemtoReg` is not declared as a separate control field in `control_signals_t`**. 
 
-Instead, writeback value arbitration is handled hierarchically inside `writeback_value()` (`src/writeback.c`):
+Instead, write-back value selection is implemented in software via hierarchical condition checks inside `writeback_value()` (`src/writeback.c`):
 
 ```c
 int32_t writeback_value(mem_wb_t *stage)
@@ -168,9 +170,9 @@ int32_t writeback_value(mem_wb_t *stage)
 }
 ```
 
-#### Why This Is an Intentional Architectural Choice:
-1. **Elimination of Redundant Pipeline State**: A pipelined processor already carries `mem_read` and `jump` across `ID/EX`, `EX/MEM`, and `MEM/WB`. Adding a dedicated `MemtoReg` flag carries redundant state across multiple 32-bit pipeline registers.
-2. **Three-Way Writeback Disambiguation**: In RV32I, the register write port must select among three distinct sources: **ALU result**, **Memory data**, or **Link address (PC + 4)**. A single 1-bit `MemtoReg` is insufficient for jumps. Deriving the writeback source directly from the active operation (`jump` → `link_address`, `mem_read` → `memory_data`, default → `alu_result`) simplifies stage decoding and reduces register overhead without rendering issues across platforms.
+#### Implementation Rationale:
+1. **Three-Way Writeback Disambiguation**: In RV32I, the register write port must arbitrate among three distinct values: **ALU result**, **Memory data**, or **Link address (PC + 4)**. A single 1-bit `MemtoReg` from basic single-cycle diagrams is insufficient to handle jump linking without additional multiplexer control logic.
+2. **Alternative Write-Back Source Selection**: Rather than declaring a separate `MemtoReg` field in `control_signals_t` and propagating it across inter-stage pipeline registers, `writeback_value()` directly inspects the existing control flags already staged in `MEM/WB` (`stage->control.jump` for link addresses, `stage->control.mem_read` for load data, and defaults to `alu_result`). This serves as an alternative software implementation of write-back source selection, without claiming physical hardware savings or architectural superiority over explicit control bus encoding.
 
 ---
 
@@ -190,8 +192,9 @@ int jalr; // Distinguishes register-indirect jump (JALR) from PC-relative jump (
 2. **Decoupling Data Dependencies from Control Hazards**:
    - In a non-pipelined design, target calculation happens in a single clock cycle. In a synchronous 5-stage pipeline, `JALR` introduces a coupled hazard: a **data dependency** on register `rs1` directly governs the resolution of an **unconditional control hazard** (pipeline redirect).
    - Providing explicit `jump` and `jalr` signals allows the decoder to mark `uses_rs1 = 1` for `JALR` while keeping `uses_rs1 = 0` for `JAL`. Consequently, the hazard detection unit in ID can catch load-use dependencies targeting `JALR`, and the EX-stage forwarding unit can feed the newest forwarded operand into the `JALR` target adder prior to overriding `cpu->pc`.
-3. **Explicit Hardware Alignment Enforcement**:
-   - `jalr = 1` commands the EX stage datapath to apply the RISC-V architectural specification of masking out the least-significant bit (`& ~1U`), preventing unaligned instruction fetch traps upon jumping to computed addresses.
+3. **Least-Significant Bit Masking (`& ~1U`)**:
+   - For `JALR`, the EX stage computes `(operand1 + immediate) & ~1U`. Clearing the least-significant bit enforces the RISC-V specification (which accommodates 16-bit instruction boundaries in compressed ISA variants).
+   - However, clearing bit 0 guarantees only two-byte alignment; it does **not** guarantee four-byte alignment for standard 32-bit RV32I instructions. In this simulator, instruction-address-misaligned exception handling is not implemented, and jump targets are assumed to be four-byte aligned by software convention.
 
 ---
 
@@ -215,14 +218,14 @@ Implemented in `detect_hazard()` and `pipeline_step()`:
 - Hardware action:
   1. `next_if_id = pipeline->if_id` (holds the IF/ID register).
   2. `cpu->pc` is held stationary (IF stage fetch is held).
-  3. `next_id_ex.valid = 0` (injects an architectural bubble / NOP into ID/EX).
+  3. `next_id_ex.valid = 0` (injects an invalid bubble slot into ID/EX, clearing control flags rather than inserting a NOP instruction word).
 - In the next cycle, the load advances to MEM, where its data becomes available for MEM/WB forwarding to the stalled instruction now entering EX.
 
 ### 4. EX-Stage Branch & Jump Resolution with 2-Stage Flushing
-- Branch condition evaluation (`operand1 == operand2` for `BEQ`) and jump targets (`JAL`, `JALR`) are resolved in the **EX stage**.
+- Branch condition evaluation is performed directly on the forwarded operands (`operand1 == operand2` for `BEQ`), rather than inspecting the ALU subtraction result or a zero condition flag. Jump targets (`JAL`, `JALR`) and branch targets are resolved in the **EX stage**.
 - When `branch_taken == 1`:
   - `cpu->pc` is immediately updated to the target address.
-  - `next_if_id.valid = 0` and `next_id_ex.valid = 0` (invalidates the two younger speculatively fetched instructions).
+  - `next_if_id.valid = 0` and `next_id_ex.valid = 0` (invalidates the two younger speculatively fetched instructions by clearing their valid bits).
   - Increments flush statistics (`flushes += 2`, `branch_flush_events++`, `flushed_instructions += 2`).
 
 ### 5. Synchronous Clock Stepping (Old-State / Next-State Barrier)
@@ -231,6 +234,19 @@ In `src/pipeline.c`, `pipeline_step()` declares local next-state variables (`nex
 - Stages are evaluated in reverse sequence (`WB` → `MEM` → `EX` → `ID` → `IF`).
 - All next-state values are simultaneously committed to the global `pipeline` structure at the end of the cycle.
 - This prevents race conditions where an instruction could erroneously cascade across multiple stages within a single simulated clock tick.
+
+### 6. Pipeline Bubbles vs. Architectural NOP vs. End Marker
+To maintain architectural clarity, the simulator distinguishes among three different inactive or boundary conditions:
+1. **Pipeline Bubble (`valid = 0`)**:
+   - Represents an invalid pipeline stage slot created dynamically by a load-use stall or branch flush.
+   - The simulator clears the valid flag (`valid = 0`) rather than injecting a physical 32-bit `0x00000013` instruction word into the pipeline register. Stages skip execution when `valid == 0`, no architectural state is modified, and bubbles are not counted toward retired instructions.
+2. **Architectural NOP (`0x00000013`)**:
+   - In RV32I, `NOP` is defined as `ADDI x0, x0, 0` (`0x00000013`).
+   - When decoded from memory, `decode_instruction()` recognizes `0x00000013` as a legitimate instruction with `valid = 1`. It traverses all five pipeline stages normally and retires at WB, writing zero to hardwired register `x0`.
+3. **Simulation End Marker (`0x00000000`)**:
+   - A 32-bit zero word (`0x00000000`) is used as a test harness convention to mark the end of simulated benchmark code.
+   - When fetched in IF, it triggers `cpu->fetch_stopped = 1`, halting further fetches while allowing in-flight instructions to drain through the pipeline.
+   - The end marker is **not** an architectural NOP (which is `0x00000013`), nor is it a valid RV32I instruction; it is strictly a harness termination indicator.
 
 ---
 
@@ -261,17 +277,22 @@ Implemented in `src/timeline.c`:
 
 ## Benchmark Suite
 
-The simulator includes four focused unit benchmarks and one comprehensive regression test (constructed in `src/main.c` using helper encoders `encode_addi`, `encode_r`, `encode_lw`, `encode_sw`, `encode_beq`, and `encode_jal`):
+The simulator includes five focused unit benchmarks and one comprehensive regression test (constructed in `src/main.c` using helper encoders `encode_addi`, `encode_r`, `encode_lw`, `encode_sw`, `encode_beq`, `encode_jal`, and `encode_jalr`):
 
 | # | Benchmark Name | Scenario Tested | Architectural Verification |
 | :-: | :--- | :--- | :--- |
 | **1** | **Independent Instructions** | Six independent `ADDI` instructions. | Baseline pipeline fill and drain; zero stalls; CPI approaches 1.0. |
 | **2** | **Data Dependencies & Forwarding** | Chained arithmetic operations (`ADDI`, `ADD`, `SUB`) with back-to-back register dependencies. | Exercises `EX/MEM` and `MEM/WB` forwarding paths without pipeline bubbles. |
 | **3** | **Load-Use Dependency** | `SW` followed by `LW`, immediately followed by dependent `ADDI` and `ADD`. | Verifies load-use interlock: detects dependency, stalls `IF/ID`, inserts 1 bubble into `ID/EX`, then forwards loaded word from `MEM/WB`. |
-| **4** | **Branch Behaviour** | Sequence of taken and not-taken `BEQ` instructions with data dependencies. | Confirms branch resolution in EX, verifies correct penalty (2 cycles per taken branch), and checks that wrong-path instructions are discarded. |
-| **5** | **Original Combined Regression** | Mixed workload: ALU, store/load, load-use stall, `JAL`, and taken `BEQ`. | End-to-end regression validation of the entire core feature set. |
+| **4** | **Branch Behaviour** | Sequence of taken and not-taken `BEQ` instructions with data dependencies. | Confirms direct operand equality evaluation in EX, verifies correct penalty (2 cycles per taken branch), and checks that wrong-path instructions are discarded. |
+| **5** | **JALR Jump-Register & Linking** | Indirect jump with RAW dependency on base register `rs1`, `PC + 4` link address commit, wrong-path instruction flushing, and target execution consuming the saved link register. | Exercises EX/MEM forwarding into JALR target calculation (`(rs1 + imm) & ~1U`), verifies link address writeback, and confirms correct flush penalty and pipeline resumption. |
+| **6** | **Original Combined Regression** | Mixed workload: ALU, store/load, load-use stall, `JAL`, and taken `BEQ`. | End-to-end regression validation of the core feature set. |
 
-> **Machine-Code Encoders**: The helper functions `encode_addi()`, `encode_r()`, `encode_lw()`, `encode_sw()`, `encode_beq()`, and `encode_jal()` in `main.c` are test-harness utilities that construct binary instruction words in memory. The processor datapath decodes and executes them through `decode_instruction()` like standard machine code.
+> **Implemented Instruction Support vs. Benchmark Coverage**:
+> The simulator's decoding and datapath logic implement ten RV32I instructions (`ADD`, `SUB`, `ADDI`, `LW`, `SW`, `BEQ`, `JAL`, `JALR`, `LUI`, and architectural `NOP`). 
+> The automated benchmark suite actively exercises nine of these instructions across arithmetic, load/store, upper immediate, conditional branch, and both PC-relative (`JAL`) and register-indirect (`JALR`) jumps. Architectural `NOP` (`0x00000013`) is supported by the decoding logic and pipeline registers, but is not used in the automated benchmark suite, where unexecuted slots are modeled as hardware bubbles (`valid = 0`) and the program boundary is signaled by an end marker.
+
+> **Machine-Code Encoders**: The helper functions `encode_addi()`, `encode_r()`, `encode_lw()`, `encode_sw()`, `encode_beq()`, `encode_jal()`, and `encode_jalr()` in `main.c` are test-harness utilities that construct binary instruction words in memory. The processor datapath decodes and executes them through `decode_instruction()` like standard machine code.
 
 ---
 
@@ -348,19 +369,20 @@ gcc -std=c11 -Wall -Wextra -O0 -Iinclude src/*.c -o pipeline.exe
 ```
 
 ### Running Benchmarks
-Execute all five benchmarks and display the comparison summary table:
+Execute all six benchmarks and display the comparison summary table:
 ```bash
 ./pipeline.exe all
 ```
 *(On Windows PowerShell, use `.\pipeline.exe all`)*
 
-Execute individual benchmarks by index (1 to 5):
+Execute individual benchmarks by index (1 to 6):
 ```bash
 ./pipeline.exe 1   # Benchmark 1: Independent instructions
 ./pipeline.exe 2   # Benchmark 2: Data dependencies and forwarding
 ./pipeline.exe 3   # Benchmark 3: Load-use dependency
 ./pipeline.exe 4   # Benchmark 4: Branch behaviour
-./pipeline.exe 5   # Benchmark 5: Combined demonstration
+./pipeline.exe 5   # Benchmark 5: JALR register jump and link
+./pipeline.exe 6   # Benchmark 6: Combined demonstration
 ```
 
 ---
@@ -371,7 +393,7 @@ This project is intentionally scoped as an educational pipeline simulator:
 1. **Instruction Set**: Implements an educational subset of RV32I. Shifts (`SLL`, `SRL`, `SRA`), logical operations (`AND`, `OR`, `XOR`, `SLT`), and standard unsigned memory variants (`LBU`, `LHU`) are not included.
 2. **Branch Prediction**: Does not feature a dynamic branch predictor or Branch Target Buffer (BTB). The pipeline assumes sequential execution and pays a 2-cycle penalty upon taking branches in EX.
 3. **Memory Model**: Flat, single-cycle latency memory array. Caches (L1 I-cache / D-cache), cache misses, bus interfaces, and virtual memory (MMU/TLB) are not modeled.
-4. **Exceptions & Privilege**: System calls (`ECALL`, `EBREAK`), CSR registers, and privilege levels (M/S/U) are omitted.
+4. **Exceptions & Privilege**: System calls (`ECALL`, `EBREAK`), CSR registers, privilege levels (M/S/U), and instruction-address-misaligned exception handling (e.g. on unaligned jump/branch targets) are omitted.
 
 ---
 

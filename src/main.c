@@ -81,9 +81,24 @@ static uint32_t encode_jal(unsigned rd, int imm)
            ((rd & 31U) << 7) | 0x6FU;
 }
 
-static void prepare_benchmarks(benchmark_t tests[5])
+/*
+ * I-type instruction encoder for JALR.
+ *
+ * Converts destination register (rd), base register (rs1), and
+ * immediate offset (imm) into a 32-bit RISC-V machine-code instruction.
+ * JALR: opcode=1100111 (0x67), funct3=000.
+ */
+static uint32_t encode_jalr(unsigned rd, unsigned rs1, int imm)
 {
-    memset(tests, 0, sizeof(benchmark_t) * 5);
+    return (((uint32_t)imm & 0xFFFU) << 20) |
+           ((rs1 & 31U) << 15) |
+           (0U << 12) |
+           ((rd & 31U) << 7) | 0x67U;
+}
+
+static void prepare_benchmarks(benchmark_t tests[6])
+{
+    memset(tests, 0, sizeof(benchmark_t) * 6);
 
     tests[0].name = "Independent instructions";
     tests[0].description = "Baseline execution with minimal data dependencies";
@@ -140,6 +155,46 @@ static void prepare_benchmarks(benchmark_t tests[5])
     tests[3].count = sizeof(branches) / sizeof(branches[0]);
     memcpy(tests[3].instructions, branches, sizeof(branches));
 
+    /*
+     * Benchmark 5: JALR register-indirect jump and link
+     *
+     * Tests:
+     * 1. Register-indirect target calculation: (rs1 + imm) & ~1U
+     * 2. Forwarding into JALR base register rs1 from immediately preceding ADDI
+     * 3. Link-address calculation (PC + 4) and write-back into destination register rd
+     * 4. Wrong-path instruction flushing in IF/ID and ID/EX
+     * 5. Target instruction reading and using the saved link register
+     *
+     * Instruction stream:
+     *   @0x000: addi x1, x0, 16        -> x1 = 16
+     *   @0x004: addi x2, x1, 8         -> x2 = 24 (forwarded x1 from EX/MEM)
+     *   @0x008: jalr x5, x2, 4         -> target = (24 + 4) & ~1U = 28 (0x01C); link = PC+4 = 0x00C into x5
+     *   @0x00C: addi x3, x0, 99        -> wrong path (flushed)
+     *   @0x010: addi x4, x0, 99        -> wrong path (flushed)
+     *   @0x014: addi x6, x0, 99        -> not fetched
+     *   @0x018: addi x7, x0, 99        -> not fetched
+     *   @0x01C: addi x8, x5, 1         -> target: x8 = link (12) + 1 = 13 (verifies x5 writeback)
+     *   @0x020: add  x9, x2, x8        -> x9 = 24 + 13 = 37
+     *   @0x024: 0                      -> end marker
+     */
+    tests[4].name = "JALR register jump and link";
+    tests[4].description = "Indirect jump with operand forwarding, link-address commit, and pipeline flushing";
+
+    uint32_t jalr_test[] = {
+        encode_addi(1, 0, 16),
+        encode_addi(2, 1, 8),
+        encode_jalr(5, 2, 4),
+        encode_addi(3, 0, 99),
+        encode_addi(4, 0, 99),
+        encode_addi(6, 0, 99),
+        encode_addi(7, 0, 99),
+        encode_addi(8, 5, 1),
+        encode_r(0, 8, 2, 0, 9)
+    };
+
+    tests[4].count = sizeof(jalr_test) / sizeof(jalr_test[0]);
+    memcpy(tests[4].instructions, jalr_test, sizeof(jalr_test));
+
     // Original combined demonstration program is retained as a regression test.
 
     /*
@@ -149,20 +204,20 @@ static void prepare_benchmarks(benchmark_t tests[5])
      * addi x2, x0, 3
      * add  x3, x1, x2       -> forwarding test
      * sub  x4, x1, x2
-     * jal  x1, -4
+     * jal  x1, 4            -> jump to PC+4 (0x014), link PC+4 (0x014) into x1
      * sw   x3, 208(x0)
-     * jal  x0, -12         -> JAL encoder demonstration
+     * jal  x0, 4            -> jump to PC+4 (0x01C), link discarded to x0
      * lw   x5, 208(x0)
-     * addi x6, x5, 1       -> load-use stall test
-     * beq  x6, x6, 8       -> taken branch / flush test
-     * addi x7, x0, 99      -> should be flushed
-     * addi x7, x0, 7       -> branch target
+     * addi x6, x5, 1        -> load-use stall test
+     * beq  x6, x6, 8        -> taken branch / flush test (target 0x02C)
+     * addi x7, x0, 99       -> wrong path (flushed)
+     * addi x7, x0, 7        -> branch target (0x02C)
      * lui  x8, 0x12345
-     * 0                    -> end marker
+     * 0                     -> end marker
      */
 
-    tests[4].name = "Original combined demonstration";
-    tests[4].description = "Original forwarding, load-use, store and taken-branch test";
+    tests[5].name = "Original combined demonstration";
+    tests[5].description = "Original forwarding, load-use, store and taken-branch test";
 
    uint32_t original[] = {
     0x00500093,              // addi x1, x0, 5
@@ -184,8 +239,8 @@ static void prepare_benchmarks(benchmark_t tests[5])
     0x12345437               // lui x8, 0x12345
 };
 
-    tests[4].count = sizeof(original) / sizeof(original[0]);
-    memcpy(tests[4].instructions, original, sizeof(original));
+    tests[5].count = sizeof(original) / sizeof(original[0]);
+    memcpy(tests[5].instructions, original, sizeof(original));
 }
 
 // Load a small machine code test program
@@ -395,22 +450,22 @@ static pipeline_t run_benchmark(const benchmark_t *test)
 
 int main(int argc, char *argv[])
 {
-    benchmark_t tests[5];
-    pipeline_t results[5];
+    benchmark_t tests[6];
+    pipeline_t results[6];
 
     prepare_benchmarks(tests);
 
     printf("RISC-V PIPELINE BENCHMARKS\n");
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 6; i++)
         printf("%d. %s -- %s\n",
                i + 1, tests[i].name, tests[i].description);
 
-    printf("Usage: ./pipeline.exe [1-5|all] (default: 5)\n");
+    printf("Usage: ./pipeline.exe [1-6|all] (default: 6)\n");
 
     if (argc > 1 && strcmp(argv[1], "all") == 0)
     {
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 6; i++)
             results[i] = run_benchmark(&tests[i]);
 
         printf("\n============================= BENCHMARK COMPARISON ================================\n\n");
@@ -421,7 +476,7 @@ int main(int argc, char *argv[])
 printf("%-34s %7s %7s %7s %7s %7s %7s\n",
                "_________", "______", " _______",
                "___", "___", "______", "_______");
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 6; i++)
         {
             pipeline_t *r = &results[i];
 
@@ -441,15 +496,15 @@ printf("%-34s %7s %7s %7s %7s %7s %7s\n",
         return 0;
     }
 
-    int selection = 5;
+    int selection = 6;
 
     if (argc > 1)
         selection = atoi(argv[1]);
 
-    if (selection < 1 || selection > 5)
+    if (selection < 1 || selection > 6)
     {
         fprintf(stderr,
-                "Invalid benchmark number. Choose 1, 2, 3, 4, 5 or all.\n");
+                "Invalid benchmark number. Choose 1, 2, 3, 4, 5, 6 or all.\n");
         return 1;
     }
 
