@@ -1,0 +1,22 @@
+# Binaries and executables
+*.exe
+*.o
+*.obj
+*.out
+
+# Archives and compressed files
+*.zip
+*.tar.gz
+*.7z
+
+# IDE and Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
