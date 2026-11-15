@@ -128,15 +128,15 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
     printf("CLOCK CYCLE %u\n", pipeline->cycles);
     printf("====================================================\n");
 
-    /* ---------- WB stage ---------- */
+    // write back stage 
 
     write_back(cpu, pipeline);
 
-    /* ---------- MEM stage ---------- */
+    // mem stage 
 
     next_mem_wb = memory_access(cpu, &pipeline->ex_mem);
 
-    /* ---------- EX stage ---------- */
+    // EX stage 
 
     int branch_taken = 0;
     uint32_t branch_target = 0;
@@ -149,15 +149,15 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
         &branch_target,
         pipeline);
 
-    /* ---------- Branch handling ---------- */
+    // Branch handling 
 
     if (branch_taken)
     {
         /*
-         * The branch is resolved in EX.
-         * The instruction currently in ID and the instruction
-         * currently in IF are younger wrong-path instructions.
-         * Both are flushed.
+          The branch is resolved in EX.
+          The instruction currently in ID and the instruction
+          currently in IF are younger wrong-path instructions.
+          Both are flushed.
          */
 
         cpu->pc = branch_target;
@@ -173,7 +173,7 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
     }
     else
     {
-        /* ---------- Hazard detection ---------- */
+        // Hazard detection 
 
         int load_use_hazard =
             detect_hazard(&pipeline->id_ex, &pipeline->if_id);
@@ -181,9 +181,9 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
         if (load_use_hazard)
         {
             /*
-             * Hold PC and IF/ID.
-             * Insert a bubble into ID/EX.
-             * The older load continues into EX/MEM.
+              Hold PC and IF/ID.
+              Insert a bubble into ID/EX.
+              The older load continues into EX/MEM.
              */
 
             next_if_id = pipeline->if_id;
@@ -198,11 +198,11 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
         }
         else
         {
-            /* ---------- ID stage ---------- */
+            // ID stage 
 
             next_id_ex = decode(cpu, &pipeline->if_id);
 
-            /* ---------- IF stage ---------- */
+            // IF stage 
 
             if (!cpu->fetch_stopped && !cpu->halted)
             {
@@ -210,11 +210,10 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
 
                 if (instruction == 0)
                 {
-                    /*
-                     * A zero word is used as the end marker in
-                     * this educational test program.
-                     * Stop fetching and allow the pipeline to drain.
-                     */
+                    
+                     //A zero word is used as the end marker in this educational test program.
+                     //Stop fetching and allow the pipeline to drain.
+                     
 
                     cpu->fetch_stopped = 1;
                     printf("    IF: end marker found; stopping fetch\n");
@@ -235,7 +234,7 @@ void pipeline_step(cpu_t *cpu, pipeline_t *pipeline)
         }
     }
 
-    /* ---------- Update all pipeline registers together ---------- */
+    // Updating all pipeline registers together 
 
     pipeline->if_id = next_if_id;
     pipeline->id_ex = next_id_ex;

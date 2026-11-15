@@ -343,9 +343,9 @@ static pipeline_t run_benchmark(const benchmark_t *test)
     timeline_init(&timeline);
     load_program(&cpu, test);
 
-    printf("\n====================================================\n");
+    printf("\n==========================================================\n");
     printf("BENCHMARK: %s\n%s\n", test->name, test->description);
-    printf("====================================================\n");
+    printf("==========================================================\n");
     printf("RISC-V RV32I FIVE-STAGE PIPELINE SIMULATOR\n");
     printf("IF -> ID -> EX -> MEM -> WB\n");
 
@@ -413,12 +413,14 @@ int main(int argc, char *argv[])
         for (int i = 0; i < 5; i++)
             results[i] = run_benchmark(&tests[i]);
 
-        printf("\n================ BENCHMARK COMPARISON ================\n");
+        printf("\n============================= BENCHMARK COMPARISON ================================\n\n");
 
         printf("%-34s %7s %7s %7s %7s %7s %7s\n",
-               "Benchmark", "Cycles", "Retired",
+               "Benchmark", "Cycles", " Retired",
                "CPI", "IPC", "Stalls", "Flushes");
-
+printf("%-34s %7s %7s %7s %7s %7s %7s\n",
+               "_________", "______", " _______",
+               "___", "___", "______", "_______");
         for (int i = 0; i < 5; i++)
         {
             pipeline_t *r = &results[i];
@@ -429,13 +431,13 @@ int main(int argc, char *argv[])
             double ipc = r->cycles ?
                 (double)r->retired / r->cycles : 0.0;
 
-            printf("%-34s %7u %7u %7.3f %7.3f %7u %7u\n",
+            printf("%-34s %7u %7u %8.3f %8.3f %6u %6u\n",
                    tests[i].name, r->cycles, r->retired,
                    cpi, ipc, r->stalls,
                    r->hazard_stats.flushed_instructions);
         }
 
-        printf("=======================================================\n");
+        printf("==================================================================================\n");
         return 0;
     }
 

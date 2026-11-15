@@ -16,6 +16,9 @@ A cycle-accurate, educational RISC-V (RV32I subset) five-stage pipeline processo
 - [Project-Specific Datapath Diagram](#project-specific-datapath-diagram)
 - [Supported Instruction Subset](#supported-instruction-subset)
 - [Control Signal Design & Architectural Decisions](#control-signal-design--architectural-decisions)
+  - [Control Signal Truth Table](#control-signal-truth-table)
+  - [Architectural Decision 1: Absence of Dedicated MemtoReg Line](#architectural-decision-1-absence-of-dedicated-memtoreg-line)
+  - [Architectural Decision 2: Decoupled Jump Control Logic (jump and jalr Dual-Signal Design)](#architectural-decision-2-decoupled-jump-control-logic-jump-and-jalr-dual-signal-design)
 - [Implementation Highlights & Hardware Mechanics](#implementation-highlights--hardware-mechanics)
 - [Performance Instrumentation & Execution Views](#performance-instrumentation--execution-views)
 - [Benchmark Suite](#benchmark-suite)
@@ -144,7 +147,7 @@ typedef struct
 | `LUI`  | 1 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 | `NOP`  | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `ALU_NONE` |
 
-### Architectural Decision: Absence of `MemtoReg`
+### Architectural Decision 1: Absence of Dedicated `MemtoReg` Line
 
 Standard textbook single-cycle datapaths (e.g., Patterson & Hennessy) introduce a dedicated multiplexer control signal named `MemtoReg` to route either the memory read word or the ALU output into the writeback register port.
 
@@ -167,7 +170,28 @@ int32_t writeback_value(mem_wb_t *stage)
 
 #### Why This Is an Intentional Architectural Choice:
 1. **Elimination of Redundant Pipeline State**: A pipelined processor already carries `mem_read` and `jump` across `ID/EX`, `EX/MEM`, and `MEM/WB`. Adding a dedicated `MemtoReg` flag carries redundant state across multiple 32-bit pipeline registers.
-2. **Three-Way Writeback Disambiguation**: In RV32I, the register write port must select among three distinct sources: **ALU result**, **Memory data**, or **Link address ($PC+4$)**. A single 1-bit `MemtoReg` is insufficient for jumps. Deriving the writeback source directly from the active operation (`jump` $\rightarrow$ `link_address`, `mem_read` $\rightarrow$ `memory_data`, default $\rightarrow$ `alu_result`) simplifies stage decoding and reduces register overhead.
+2. **Three-Way Writeback Disambiguation**: In RV32I, the register write port must select among three distinct sources: **ALU result**, **Memory data**, or **Link address (PC + 4)**. A single 1-bit `MemtoReg` is insufficient for jumps. Deriving the writeback source directly from the active operation (`jump` → `link_address`, `mem_read` → `memory_data`, default → `alu_result`) simplifies stage decoding and reduces register overhead without rendering issues across platforms.
+
+---
+
+### Architectural Decision 2: Decoupled Jump Control Logic (`jump` and `jalr` Dual-Signal Design)
+
+Conventional introductory single-cycle datapath textbooks commonly illustrate seven core control signals. In this microarchitecture implementation, the control unit generates an explicit **8-field control bundle**, introducing two dedicated jump-related signals: `jump` and `jalr`.
+
+```c
+int jump; // Asserts unconditional control-flow redirection & link address preservation
+int jalr; // Distinguishes register-indirect jump (JALR) from PC-relative jump (JAL)
+```
+
+#### Microarchitectural Rationale:
+1. **Target Address Calculation Semantics**:
+   - `JAL` (Jump and Link) calculates its target using pure PC-relative addressing: `Target = PC + imm`. Its target is completely independent of the architectural register file.
+   - `JALR` (Jump and Link Register) calculates its target using register-indirect addressing: `Target = (rs1 + imm) & ~1U`. The target depends on a register operand that may be subject to data hazards and forwarding dependencies.
+2. **Decoupling Data Dependencies from Control Hazards**:
+   - In a non-pipelined design, target calculation happens in a single clock cycle. In a synchronous 5-stage pipeline, `JALR` introduces a coupled hazard: a **data dependency** on register `rs1` directly governs the resolution of an **unconditional control hazard** (pipeline redirect).
+   - Providing explicit `jump` and `jalr` signals allows the decoder to mark `uses_rs1 = 1` for `JALR` while keeping `uses_rs1 = 0` for `JAL`. Consequently, the hazard detection unit in ID can catch load-use dependencies targeting `JALR`, and the EX-stage forwarding unit can feed the newest forwarded operand into the `JALR` target adder prior to overriding `cpu->pc`.
+3. **Explicit Hardware Alignment Enforcement**:
+   - `jalr = 1` commands the EX stage datapath to apply the RISC-V architectural specification of masking out the least-significant bit (`& ~1U`), preventing unaligned instruction fetch traps upon jumping to computed addresses.
 
 ---
 
@@ -203,8 +227,8 @@ Implemented in `detect_hazard()` and `pipeline_step()`:
 
 ### 5. Synchronous Clock Stepping (Old-State / Next-State Barrier)
 In `src/pipeline.c`, `pipeline_step()` declares local next-state variables (`next_if_id`, `next_id_ex`, `next_ex_mem`, `next_mem_wb`).
-- Each stage reads from `pipeline-><stage>` (the stable state at clock edge $t$) and writes into `next_<stage>`.
-- Stages are evaluated in reverse sequence (`WB` $\rightarrow$ `MEM` $\rightarrow$ `EX` $\rightarrow$ `ID` $\rightarrow$ `IF`).
+- Each stage reads from `pipeline-><stage>` (the stable state at clock edge `t`) and writes into `next_<stage>`.
+- Stages are evaluated in reverse sequence (`WB` → `MEM` → `EX` → `ID` → `IF`).
 - All next-state values are simultaneously committed to the global `pipeline` structure at the end of the cycle.
 - This prevents race conditions where an instruction could erroneously cascade across multiple stages within a single simulated clock tick.
 
@@ -215,9 +239,9 @@ In `src/pipeline.c`, `pipeline_step()` declares local next-state variables (`nex
 ### Metrics Tracked in `pipeline_t`
 - **Total Clock Cycles (`cycles`)**: Total simulated clock ticks elapsed.
 - **Retired Instructions (`retired`)**: Instructions that successfully graduate from the `WB` stage. Flushed slots and bubble cycles are excluded.
-- **CPI (Cycles Per Instruction)**: $\text{cycles} / \text{retired}$.
-- **IPC (Instructions Per Cycle)**: $\text{retired} / \text{cycles}$.
-- **Ideal Reference Comparison**: Evaluated against an ideal baseline of $\text{retired} + 4$ (the latency of an uninterrupted straight-line single-issue pipeline without stalls).
+- **CPI (Cycles Per Instruction)**: `cycles / retired`.
+- **IPC (Instructions Per Cycle)**: `retired / cycles`.
+- **Ideal Reference Comparison**: Evaluated against an ideal baseline of `retired + 4` (the theoretical latency of an uninterrupted straight-line single-issue pipeline without stalls or control hazards).
 - **Hazard Diagnostic Counters**:
   - `ex_mem_forwardings` and `mem_wb_forwardings`
   - `load_use_stalls` and `bubbles`
@@ -253,7 +277,7 @@ The simulator includes four focused unit benchmarks and one comprehensive regres
 
 ## Sample Execution Outputs & Terminal Views
 
-The simulator generates three distinct terminal views that demonstrate execution correctness, hazard resolution, and performance characteristics.
+The simulator generates four distinct terminal execution views that demonstrate microarchitectural correctness, hazard resolution, performance metrics, and instruction profiling.
 
 ### View 1: Cycle-by-Cycle Execution Trace
 *Displays stage-by-stage transitions, register reads/writes, ALU results, and real-time hazard events (stalls, bubbles, flushes).*
@@ -269,6 +293,11 @@ The simulator generates three distinct terminal views that demonstrate execution
 *Comprehensive summary table comparing total cycles, instruction retirement, CPI, IPC, load-use stalls, and branch flushes across all benchmarks.*
 
 ![Benchmark Comparison Table](docs/images/benchmark_summary.png)
+
+### View 4: Pipeline Performance Diagnostics & Instruction Breakdown
+*Detailed execution report presenting aggregate cycle counts, retired instruction graduation, CPI/IPC relative to the ideal uninterrupted reference baseline, instruction category frequency (Arithmetic, Loads, Stores, Branches, Jumps, Upper Immediates), and hazard telemetry (forwarding events, load-use bubbles, and branch penalty flushes).*
+
+![Pipeline Performance and Hazard Diagnostics](docs/images/pipeline_statistics.png)
 
 ---
 
@@ -299,7 +328,8 @@ The simulator generates three distinct terminal views that demonstrate execution
 │       ├── datapath.svg  # Project-specific vector datapath diagram
 │       ├── cycle_execution_log.png
 │       ├── pipeline_timeline.png
-│       └── benchmark_summary.png
+│       ├── benchmark_summary.png
+│       └── pipeline_statistics.png
 ├── .gitignore            # Excludes build binaries (*.exe, *.o) and editor temp files
 └── README.md             # Project documentation
 ```

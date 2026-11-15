@@ -108,28 +108,37 @@
 
 
   <!-- ==================== STAGE 1: IF ==================== -->
+  <!-- PC+4 Adder -->
+  <rect x="90" y="196" width="46" height="34" class="card"/>
+  <text x="113" y="212" class="card-title">Add</text>
+  <text x="113" y="224" class="card-sub">+4</text>
+
   <!-- PC Mux -->
-  <text x="44" y="258" class="card-sub" fill="#58a6ff" font-weight="bold">PC+4</text>
-  <polygon points="46,265 60,273 60,335 46,343" class="mux"/>
-  <text x="53" y="290" class="mux-label">0</text>
-  <text x="53" y="325" class="mux-label">1</text>
+  <polygon points="50,265 64,273 64,335 50,343" class="mux"/>
+  <text x="57" y="290" class="mux-label">0</text>
+  <text x="57" y="325" class="mux-label">1</text>
 
   <!-- PC Register -->
-  <rect x="78" y="280" width="38" height="50" class="card"/>
-  <text x="97" y="310" class="card-title">PC</text>
+  <rect x="85" y="280" width="38" height="50" class="card"/>
+  <text x="104" y="310" class="card-title">PC</text>
 
   <!-- Instruction Memory -->
-  <rect x="135" y="265" width="75" height="80" class="card"/>
-  <text x="172" y="300" class="card-title">Instruction</text>
-  <text x="172" y="315" class="card-title">Memory</text>
+  <rect x="140" y="265" width="72" height="80" class="card"/>
+  <text x="176" y="300" class="card-title">Instruction</text>
+  <text x="176" y="315" class="card-title">Memory</text>
 
   <!-- IF Datapath Connections -->
-  <path d="M 60 305 L 76 305" class="bus-data" marker-end="url(#arr-data)"/>
-  <path d="M 116 305 L 133 305" class="bus-data" marker-end="url(#arr-data)"/>
-  <path d="M 210 305 L 233 305" class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 64 305 L 83 305" class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 123 305 L 138 305" class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 212 305 L 233 305" class="bus-data" marker-end="url(#arr-data)"/>
 
-  <!-- PC+4 loop -->
-  <path d="M 125 305 L 125 242 L 40 242 L 40 282 L 44 282" class="bus-data" marker-end="url(#arr-data)"/>
+  <!-- PC to Add +4 input -->
+  <path d="M 130 305 L 130 213 L 134 213" class="bus-data"/>
+  <path d="M 134 213 L 136 213" class="bus-data"/>
+
+  <!-- PC+4 loop to PC Mux Input 0 with spacious runway -->
+  <text x="40" y="206" class="card-sub" fill="#58a6ff" font-weight="bold">PC + 4</text>
+  <path d="M 90 213 L 30 213 L 30 286 L 48 286" class="bus-data" marker-end="url(#arr-data)"/>
 
 
   <!-- ==================== PIPELINE REGISTER 1: IF/ID ==================== -->
@@ -191,7 +200,7 @@
   <path d="M 500 485 L 500 540 L 442 540" class="bus-stall" marker-end="url(#arr-stall)"/>
 
   <!-- Stall Control Action Lines -->
-  <path d="M 300 605 L 97 605 L 97 332" class="bus-stall" marker-end="url(#arr-stall)"/>
+  <path d="M 300 605 L 104 605 L 104 332" class="bus-stall" marker-end="url(#arr-stall)"/>
   <path d="M 325 580 L 325 500 L 250 500 L 250 487" class="bus-stall" marker-end="url(#arr-stall)"/>
   <path d="M 445 605 L 505 605 L 505 487" class="bus-stall" marker-end="url(#arr-stall)"/>
 
@@ -254,7 +263,8 @@
   <!-- Muxes to ALU -->
   <path d="M 590 302 L 638 302" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 590 372 L 608 372" class="bus-data" marker-end="url(#arr-data)"/>
-  <path d="M 520 450 L 605 450 L 605 395 L 608 395" class="bus-data" marker-end="url(#arr-data)"/>
+  <!-- Immediate into ALU Src Mux with generous 18px runway -->
+  <path d="M 520 450 L 590 450 L 590 395 L 608 395" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 625 387 L 638 387" class="bus-data" marker-end="url(#arr-data)"/>
 
   <!-- ALU Output to EX/MEM -->
@@ -266,7 +276,7 @@
   <path d="M 655 503 L 655 533" class="bus-data" marker-end="url(#arr-data)"/>
 
   <!-- Branch / Jump Target Feedback to PC Mux -->
-  <path d="M 590 552 L 53 552 L 53 345" class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 590 552 L 57 552 L 57 345" class="bus-data" marker-end="url(#arr-data)"/>
 
   <!-- Flush Control lines -->
   <path d="M 655 570 L 655 588" class="bus-flush" marker-end="url(#arr-flush)"/>
@@ -291,8 +301,8 @@
   <path d="M 760 335 L 783 335" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 865 348 L 893 348" class="bus-data" marker-end="url(#arr-data)"/>
 
-  <!-- EX/MEM Forwarding path back to Forwarding Unit -->
-  <path d="M 745 248 L 745 190 L 630 190 L 630 198" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
+  <!-- EX/MEM Forwarding path back to Forwarding Unit with 20px descent -->
+  <path d="M 745 248 L 745 180 L 630 180 L 630 198" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
 
 
   <!-- ==================== PIPELINE REGISTER 4: MEM/WB ==================== -->
@@ -302,43 +312,46 @@
 
 
   <!-- ==================== STAGE 5: WB ==================== -->
-  <!-- WB Value Select Box -->
-  <rect x="965" y="160" width="115" height="60" class="ctrl-card"/>
-  <text x="1022" y="178" class="ctrl-title">WB value select:</text>
-  <text x="1022" y="192" class="card-sub" fill="#79c0ff">link address /</text>
-  <text x="1022" y="204" class="card-sub" fill="#79c0ff">memory data /</text>
-  <text x="1022" y="216" class="card-sub" fill="#79c0ff">ALU result</text>
+  <!-- WB Value Select Logic Box -->
+  <rect x="960" y="168" width="122" height="66" class="ctrl-card"/>
+  <text x="1021" y="186" class="ctrl-title">WB Value Select</text>
+  <text x="1021" y="199" class="card-sub" fill="#79c0ff">link_addr (jump)</text>
+  <text x="1021" y="211" class="card-sub" fill="#79c0ff">mem_data (mem_read)</text>
+  <text x="1021" y="223" class="card-sub" fill="#79c0ff">alu_result (default)</text>
+
+  <!-- Control Inputs from MEM/WB to WB Value Select (spacious 33px horizontal bus) -->
+  <path d="M 925 201 L 958 201" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
+  <text x="941" y="195" class="card-sub" fill="#d29922" font-size="8.5px">ctrl</text>
 
   <!-- WB Value Mux -->
   <polygon points="975,280 1005,295 1005,425 975,440" class="mux"/>
 
-  <!-- Register File Write Port Box -->
-  <rect x="1020" y="335" width="75" height="50" class="card"/>
-  <text x="1057" y="355" class="card-title">Register File</text>
-  <text x="1057" y="370" class="card-sub">Write Port</text>
+  <!-- WB Mux Control Line from WB Value Select (46px clean vertical descent) -->
+  <path d="M 990 234 L 990 278" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
 
-  <!-- MEM/WB to WB Mux -->
+  <!-- Register File Write Port Box -->
+  <rect x="1025" y="335" width="72" height="50" class="card"/>
+  <text x="1061" y="355" class="card-title">Register File</text>
+  <text x="1061" y="370" class="card-sub">Write Port</text>
+
+  <!-- MEM/WB to WB Mux (3 data inputs) -->
   <path d="M 925 305 L 973 305" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 925 360 L 973 360" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 925 415 L 973 415" class="bus-data" marker-end="url(#arr-data)"/>
 
-  <!-- WB Mux to Write Port -->
-  <path d="M 1005 360 L 1018 360" class="bus-data" marker-end="url(#arr-data)"/>
-
-  <!-- WB Mux Control Line from WB Value Select -->
-  <path d="M 990 220 L 990 278" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
+  <!-- WB Mux to Write Port (20px horizontal runway) -->
+  <path d="M 1005 360 L 1023 360" class="bus-data" marker-end="url(#arr-data)"/>
 
   <!-- Long Writeback Line back to Register File in ID -->
-  <path d="M 1057 385 L 1057 660 L 395 660 L 395 377" class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 1061 385 L 1061 660 L 395 660 L 395 377" class="bus-data" marker-end="url(#arr-data)"/>
 
   <!-- MEM/WB Forwarding path back to Forwarding Unit -->
-  <path d="M 910 248 L 910 178 L 590 178 L 590 198" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
+  <path d="M 910 248 L 910 170 L 585 170 L 585 198" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
 
 
   <!-- ==================== CONTROL SIGNALS ROUTING (GOLD/YELLOW) ==================== -->
-  <!-- reg_write across top to WB -->
-  <path d="M 440 155 L 1022 155 L 1022 158" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
-  <path d="M 1022 155 L 1057 155 L 1057 333" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
+  <!-- reg_write across top to Register File Write Port (cleanly above WB Value Select, zero collisions) -->
+  <path d="M 440 148 L 1061 148 L 1061 333" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
 
   <!-- mem_read & mem_write to MEM stage -->
   <path d="M 440 173 L 805 173 L 805 303" class="bus-ctrl" marker-end="url(#arr-ctrl)"/>
