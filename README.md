@@ -174,7 +174,7 @@ int32_t writeback_value(mem_wb_t *stage)
 ## Implementation Highlights & Hardware Mechanics
 
 ### 1. Instruction-Aware Dependency Metadata (`uses_rs1`, `uses_rs2`)
-In hardware, reading register `x0` always yields zero. In a software simulator, checking dependencies strictly by comparing register index numbers (`rs == rd`) can trigger false hazard stalls—for example, if `rd == 0` or if an instruction does not read `rs2` (such as `ADDI` or `LW`).
+In hardware, reading register `x0` always yields zero. In a software simulator, checking dependencies strictly by comparing register index numbers (`rs == rd`) can trigger false hazard stalls: for example, if `rd == 0` or if an instruction does not read `rs2` (such as `ADDI` or `LW`).
 - `decode_instruction()` explicitly marks `uses_rs1` and `uses_rs2` only when an instruction legitimately accesses those registers.
 - `detect_hazard()` and forwarding logic check `uses_rs1` and `uses_rs2` before matching register numbers, preventing spurious load-use stalls on unread register fields.
 
