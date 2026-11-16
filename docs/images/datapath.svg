@@ -136,6 +136,11 @@
   <path d="M 130 305 L 130 213 L 134 213" class="bus-data"/>
   <path d="M 134 213 L 136 213" class="bus-data"/>
 
+  <!-- PC+4 link address enters IF/ID and is carried through the pipeline -->
+  <path d="M 136 213 L 150 213 L 150 238 L 250 238 L 250 248"
+        class="bus-data" marker-end="url(#arr-data)"/>
+  <text x="166" y="231" class="card-sub" fill="#58a6ff">PC+4 link address</text>
+
   <!-- PC+4 loop to PC Mux Input 0 with spacious runway -->
   <text x="40" y="206" class="card-sub" fill="#58a6ff" font-weight="bold">PC + 4</text>
   <path d="M 90 213 L 30 213 L 30 286 L 48 286" class="bus-data" marker-end="url(#arr-data)"/>
@@ -310,6 +315,20 @@
   <text x="910" y="360" class="pipe-reg-title" transform="rotate(-90 910 360)">MEM/WB</text>
   <text x="910" y="382" class="pipe-reg-sub" transform="rotate(-90 910 382)">(valid)</text>
 
+  <!-- PC+4 is pipeline data: IF/ID -> ID/EX -> EX/MEM -> MEM/WB -->
+  <path d="M 265 485 L 265 510 L 475 510 L 475 475 L 488 475"
+        class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 520 475 L 520 510 L 715 510 L 715 475 L 728 475"
+        class="bus-data" marker-end="url(#arr-data)"/>
+  <path d="M 760 475 L 760 510 L 880 510 L 880 475 L 893 475"
+        class="bus-data" marker-end="url(#arr-data)"/>
+  <text x="520" y="526" class="card-sub" fill="#58a6ff">PC+4 carried in pipeline registers</text>
+
+  <!-- MEM/WB PC+4 link value feeds the jump input of the WB value mux -->
+  <path d="M 925 475 L 945 475 L 945 260 L 985 260 L 985 292"
+        class="bus-data" marker-end="url(#arr-data)"/>
+  <text x="949" y="251" class="card-sub" fill="#58a6ff">PC+4</text>
+
 
   <!-- ==================== STAGE 5: WB ==================== -->
   <!-- WB Value Select Logic Box -->
@@ -334,7 +353,7 @@
   <text x="1061" y="355" class="card-title">Register File</text>
   <text x="1061" y="370" class="card-sub">Write Port</text>
 
-  <!-- MEM/WB to WB Mux (3 data inputs) -->
+  <!-- MEM/WB data inputs: link address, memory data, and ALU result -->
   <path d="M 925 305 L 973 305" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 925 360 L 973 360" class="bus-data" marker-end="url(#arr-data)"/>
   <path d="M 925 415 L 973 415" class="bus-data" marker-end="url(#arr-data)"/>
